@@ -53,3 +53,8 @@ dist/
 build/
 .env
 *.log
+node_modules/
+deploy-upload/
+.next/
+dist/
+build/
