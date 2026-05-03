@@ -49,7 +49,7 @@ const config: Config = {
   },
 
   // Files to run before each test suite
-  setupFilesAfterFramework: [],
+  setupFilesAfterEnv: [],
 
   // Ignore patterns
   testPathIgnorePatterns: ["/node_modules/", "/.next/"],

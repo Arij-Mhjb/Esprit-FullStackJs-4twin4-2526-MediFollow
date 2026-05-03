@@ -20,7 +20,12 @@ import {
   Loader2,
 } from "lucide-react";
 
-import { getAllUsers, createUser } from "@/lib/actions/admin.actions";
+import {
+  getAllUsers,
+  createUser,
+  getPatientDoctorAssignments,
+  updatePatientPlacement,
+} from "@/lib/actions/admin.actions";
 import {
   getAllServices,
   getAssignableCareTeam,
@@ -98,6 +103,13 @@ export default function AdminUsersPage() {
   const [services, setServices] = useState<ServiceOption[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMemberOption[]>([]);
   const [loadingPlacementData, setLoadingPlacementData] = useState(false);
+  const [doctorAssignments, setDoctorAssignments] = useState<Record<string, string>>({});
+  const [showPlacementModal, setShowPlacementModal] = useState(false);
+  const [editingPlacementUser, setEditingPlacementUser] = useState<User | null>(null);
+  const [placementForm, setPlacementForm] = useState({
+    serviceId: "",
+    doctorId: "",
+  });
 
   const roleFilter = searchParams.get("role") || "ALL";
 
@@ -119,7 +131,12 @@ export default function AdminUsersPage() {
   const loadUsers = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await getAllUsers();
+      const [data, servicesRes, teamRes, assignmentRes] = await Promise.all([
+        getAllUsers(),
+        getAllServices(),
+        getAssignableCareTeam(),
+        getPatientDoctorAssignments(),
+      ]);
       setUsers(
         data.map((u: any) => ({
           ...u,
@@ -127,6 +144,26 @@ export default function AdminUsersPage() {
           status: u.isActive ? "ACTIVE" : "INACTIVE",
         }))
       );
+      if (servicesRes?.success) {
+        setServices(servicesRes.services || []);
+      }
+      if (teamRes?.success) {
+        setTeamMembers(
+          (teamRes.team || []).filter(
+            (m: any) => m.role === "DOCTOR"
+          ) as TeamMemberOption[]
+        );
+      }
+      if (assignmentRes?.success) {
+        setDoctorAssignments(
+          Object.fromEntries(
+            (assignmentRes.assignments || []).map((assignment: any) => [
+              assignment.patientId,
+              assignment.doctorId,
+            ])
+          )
+        );
+      }
     } catch (err) {
       console.error("Loading error:", err);
     } finally {
@@ -157,7 +194,7 @@ export default function AdminUsersPage() {
         if (teamRes?.success) {
           const doctors = (teamRes.team || []).filter(
             (m: any) => m.role === "DOCTOR"
-          );
+          ) as TeamMemberOption[];
           setTeamMembers(doctors);
         }
       } catch (error) {
@@ -192,6 +229,71 @@ export default function AdminUsersPage() {
     if (!formData.serviceId) return [];
     return teamMembers;
   }, [teamMembers, formData.serviceId]);
+
+  const placementDoctors = useMemo(() => {
+    if (!placementForm.serviceId) return [];
+    return teamMembers;
+  }, [teamMembers, placementForm.serviceId]);
+
+  const getAssignedService = useCallback(
+    (userId: string) =>
+      services.find((service) =>
+        Array.isArray(service.patientIds)
+          ? service.patientIds.includes(userId)
+          : false
+      ),
+    [services]
+  );
+
+  const getAssignedDoctor = useCallback(
+    (userId: string) => {
+      const doctorId = doctorAssignments[userId];
+      return teamMembers.find((member) => member.id === doctorId);
+    },
+    [doctorAssignments, teamMembers]
+  );
+
+  const handleOpenPlacementModal = (user: User) => {
+    const assignedService = getAssignedService(user.id);
+    const assignedDoctor = getAssignedDoctor(user.id);
+
+    setEditingPlacementUser(user);
+    setPlacementForm({
+      serviceId: assignedService?.id || "",
+      doctorId: assignedDoctor?.id || "",
+    });
+    setShowPlacementModal(true);
+  };
+
+  const handleSavePlacement = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPlacementUser || !placementForm.serviceId || !placementForm.doctorId) {
+      alert("Please select a service and doctor.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const result = await updatePatientPlacement(
+        editingPlacementUser.id,
+        placementForm.serviceId,
+        placementForm.doctorId
+      );
+
+      if (result.success) {
+        setShowPlacementModal(false);
+        setEditingPlacementUser(null);
+        await loadUsers();
+      } else {
+        alert(result.error || "Failed to update patient assignment.");
+      }
+    } catch (error) {
+      console.error("Placement update failed", error);
+      alert("An error occurred while updating the assignment.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const updateURL = (key: string, val: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -493,6 +595,9 @@ export default function AdminUsersPage() {
                 <th className="px-6 py-4 text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest">
                   Contact
                 </th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest">
+                  Assignment
+                </th>
                 <th className="px-6 py-4 text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest text-right">
                   Actions
                 </th>
@@ -500,11 +605,15 @@ export default function AdminUsersPage() {
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-700/30">
               {filteredUsers.length > 0 ? (
-                filteredUsers.map((user) => (
-                  <tr
-                    key={user.id}
-                    className="group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all"
-                  >
+                filteredUsers.map((user) => {
+                  const assignedService = getAssignedService(user.id);
+                  const assignedDoctor = getAssignedDoctor(user.id);
+
+                  return (
+                    <tr
+                      key={user.id}
+                      className="group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all"
+                    >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center font-black text-indigo-600 dark:text-indigo-400 text-xs">
@@ -558,6 +667,37 @@ export default function AdminUsersPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
+                      {user.role === "PATIENT" ? (
+                        <div className="space-y-2 min-w-44">
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                              Service
+                            </p>
+                            <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                              {assignedService?.serviceName || "Unassigned"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                              Doctor
+                            </p>
+                            <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                              {assignedDoctor?.label || "Unassigned"}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenPlacementModal(user)}
+                            className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-cyan-300 hover:text-indigo-800 dark:hover:text-cyan-200"
+                          >
+                            Edit assignment
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-400">-</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
                         <Link
                           href={`/admin/users/${user.id}`}
@@ -575,11 +715,12 @@ export default function AdminUsersPage() {
                         </Link>
                       </div>
                     </td>
-                  </tr>
-                ))
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
-                  <td colSpan={4} className="px-6 py-20 text-center">
+                  <td colSpan={5} className="px-6 py-20 text-center">
                     <Users className="mx-auto text-slate-700 mb-4" size={40} />
                     <p className="text-sm font-bold text-slate-500 italic">
                       No users found.
@@ -591,6 +732,110 @@ export default function AdminUsersPage() {
           </table>
         </div>
       </div>
+      {/* Patient Assignment Modal */}
+      {showPlacementModal && editingPlacementUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 dark:bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-[28px] shadow-2xl overflow-hidden border border-slate-200 dark:border-cyan-300/20">
+            <div className="px-7 py-5 border-b border-slate-200 dark:border-cyan-300/20 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  Patient assignment
+                </p>
+                <h2 className="text-lg font-black leading-tight">
+                  {editingPlacementUser.name}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPlacementModal(false);
+                  setEditingPlacementUser(null);
+                }}
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-400 transition-all"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSavePlacement} className="p-7 space-y-5">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
+                  Service
+                </label>
+                <select
+                  required
+                  value={placementForm.serviceId}
+                  onChange={(e) =>
+                    setPlacementForm({
+                      serviceId: e.target.value,
+                      doctorId: "",
+                    })
+                  }
+                  className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 dark:text-white transition-all"
+                >
+                  <option value="">Select service</option>
+                  {services
+                    .filter((service) => service.isActive !== false)
+                    .map((service) => (
+                      <option key={service.id} value={service.id}>
+                        {service.serviceName}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
+                  Doctor
+                </label>
+                <select
+                  required
+                  value={placementForm.doctorId}
+                  onChange={(e) =>
+                    setPlacementForm({
+                      ...placementForm,
+                      doctorId: e.target.value,
+                    })
+                  }
+                  disabled={!placementForm.serviceId}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 dark:text-white transition-all disabled:opacity-60"
+                >
+                  <option value="">Select doctor</option>
+                  {placementDoctors.map((doctor) => (
+                    <option key={doctor.id} value={doctor.id}>
+                      {doctor.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="pt-3 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPlacementModal(false);
+                    setEditingPlacementUser(null);
+                  }}
+                  className="flex-1 py-3 text-xs font-black uppercase text-slate-400 hover:text-slate-600"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-[2] bg-indigo-600 text-white font-black text-[10px] uppercase tracking-widest py-4 rounded-2xl shadow-lg shadow-indigo-200 dark:shadow-none transition-all hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {saving ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    "Save assignment"
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       {/* Dynamic Creation Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 dark:bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -660,7 +905,7 @@ export default function AdminUsersPage() {
                   Profile Type
                 </label>
                 <div className="grid grid-cols-3 gap-2">
-                  {["PATIENT", "DOCTOR", "NURSE", "COORDINATOR", "ADMIN"].map(
+                  {["PATIENT", "DOCTOR", "NURSE", "COORDINATOR"].map(
                     (r) => (
                       <button
                         key={r}
