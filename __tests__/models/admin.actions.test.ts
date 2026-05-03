@@ -129,7 +129,7 @@ describe("Admin Actions", () => {
       });
 
       expect(result.success).toBe(true);
-      expect(result.user).toEqual(mockUpdatedUser);
+      expect(result.data).toEqual(mockUpdatedUser);
     });
 
     it("should return error on update failure", async () => {
@@ -182,9 +182,6 @@ describe("Admin Actions", () => {
 
   describe("deleteUser", () => {
     it("should delete user successfully", async () => {
-      (prisma.$transaction as jest.Mock).mockImplementation((callback) =>
-        callback(prisma)
-      );
       (prisma.user.delete as jest.Mock).mockResolvedValue({
         id: "1",
         email: "deleted@test.com",
@@ -196,7 +193,7 @@ describe("Admin Actions", () => {
     });
 
     it("should return error on delete failure", async () => {
-      (prisma.$transaction as jest.Mock).mockRejectedValue(
+      (prisma.user.delete as jest.Mock).mockRejectedValue(
         new Error("Delete failed")
       );
 

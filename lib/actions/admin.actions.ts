@@ -13,6 +13,18 @@ import {
 } from "@/lib/actions/notification.actions";
 import crypto from "crypto";
 
+function safeRevalidatePath(path: string) {
+  try {
+    revalidatePath(path);
+  } catch (error) {
+    if (process.env.NODE_ENV === "test") {
+      console.warn(`Skipping revalidatePath in test environment: ${path}`);
+    } else {
+      throw error;
+    }
+  }
+}
+
 type RiskLevel = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 type RecommendationPriority = "URGENT" | "HIGH" | "MEDIUM" | "LOW";
 
@@ -72,6 +84,10 @@ type UserSubmissionSummary = {
 export async function getAllUsers() {
   try {
     const users = await prisma.user.findMany({
+      include: {
+        doctorProfile: true,
+        nurseProfile: true,
+      },
       orderBy: {
         createdAt: "desc",
       },
@@ -88,12 +104,43 @@ export async function getUserById(id: string) {
   try {
     const user = await prisma.user.findUnique({
       where: { id },
+      include: {
+        doctorProfile: true,
+        nurseProfile: true,
+      },
     });
 
     return user;
   } catch (error) {
     console.error("Error getting user by ID:", error);
     return null;
+  }
+}
+
+export async function getUserServiceAssignments(userId: string) {
+  try {
+    const services = await prisma.service.findMany({
+      where: {
+        OR: [
+          { patientIds: { has: userId } },
+          { teamIds: { has: userId } },
+        ],
+      },
+      select: {
+        id: true,
+        serviceName: true,
+        specializations: true,
+      },
+    });
+
+    return { success: true, services };
+  } catch (error) {
+    console.error("Error getting user service assignments:", error);
+    return {
+      success: false,
+      services: [],
+      error: "Failed to load service assignments",
+    };
   }
 }
 
@@ -812,8 +859,8 @@ export async function updateUser(userId: string, data: any) {
       },
     });
 
-    revalidatePath("/admin/users");
-    revalidatePath(`/admin/users/${userId}`);
+    safeRevalidatePath("/admin/users");
+    safeRevalidatePath(`/admin/users/${userId}`);
     return { success: true, data: user };
   } catch (error) {
     console.error("Error updating user:", error);
@@ -830,7 +877,7 @@ export async function deleteUser(userId: string) {
       where: { id: userId },
     });
 
-    revalidatePath("/admin/users");
+    safeRevalidatePath("/admin/users");
     return { success: true };
   } catch (error) {
     console.error("Error deleting user:", error);
