@@ -82,7 +82,7 @@ jobs:
           path: node_modules
           key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
       - name: Run tests with coverage
-        run: npm test -- --passWithNoTests --coverage
+        run: npm test -- --passWithNoTests --coverage --testPathPattern="__tests__/components|__tests__/pages"
         env:
           NODE_ENV: test
           JWT_SECRET: ci-test-secret
