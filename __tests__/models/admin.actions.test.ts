@@ -1258,5 +1258,147 @@ describe("Admin Actions", () => {
       expect(result.success).toBe(false);
     });
   });
+
+  describe("Email and notification error catch branches", () => {
+    it("should handle getUserById error gracefully", async () => {
+      (prisma.user.findUnique as jest.Mock).mockRejectedValue(new Error("DB error"));
+      const result = await getUserById("u1");
+      expect(result).toBeNull();
+    });
+
+    it("should handle pusher error in createUser and still succeed", async () => {
+      const { pusherServer } = jest.requireMock("@/lib/pusher");
+      pusherServer.trigger.mockRejectedValue(new Error("Pusher down"));
+      const mockUser = { id: "1", firstName: "Test", lastName: "User", email: "test@test.com", role: "PATIENT" };
+      (prisma.user.create as jest.Mock).mockResolvedValue(mockUser);
+
+      const result = await createUser({
+        email: "test@test.com",
+        firstName: "Test",
+        lastName: "User",
+        role: "PATIENT",
+        isActive: true,
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("should handle email failure in createUser and still succeed", async () => {
+      const { sendStaffCredentialsEmail } = jest.requireMock("@/lib/actions/notification.actions");
+      sendStaffCredentialsEmail.mockResolvedValue({ success: false, error: "SMTP error" });
+      const mockUser = { id: "1", firstName: "Dr", lastName: "Smith", email: "dr@test.com", role: "DOCTOR" };
+      (prisma.user.create as jest.Mock).mockResolvedValue(mockUser);
+
+      const result = await createUser({
+        email: "dr@test.com",
+        firstName: "Dr",
+        lastName: "Smith",
+        role: "DOCTOR",
+        isActive: true,
+      });
+      expect(result.success).toBe(true);
+      expect(result.emailSent).toBe(false);
+    });
+
+    it("should handle email exception in createUser and still succeed", async () => {
+      const { sendStaffCredentialsEmail } = jest.requireMock("@/lib/actions/notification.actions");
+      sendStaffCredentialsEmail.mockRejectedValue(new Error("SMTP down"));
+      const mockUser = { id: "1", firstName: "Nurse", lastName: "Test", email: "nurse@test.com", role: "NURSE" };
+      (prisma.user.create as jest.Mock).mockResolvedValue(mockUser);
+
+      const result = await createUser({
+        email: "nurse@test.com",
+        firstName: "Nurse",
+        lastName: "Test",
+        role: "NURSE",
+        isActive: true,
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("should handle approval email error and still approve patient", async () => {
+      const { sendPatientApprovalEmail } = jest.requireMock("@/lib/actions/notification.actions");
+      sendPatientApprovalEmail.mockRejectedValue(new Error("Email failed"));
+
+      const mockPatient = {
+        id: "p1",
+        userId: "u1",
+        user: { id: "u1", email: "patient@test.com", firstName: "Patient" },
+      };
+      (prisma.patient.update as jest.Mock).mockResolvedValue(mockPatient);
+      (prisma.user.update as jest.Mock).mockResolvedValue({ id: "u1", isActive: true });
+
+      const result = await approvePatient("p1");
+      expect(result.success).toBe(true);
+    });
+
+    it("should handle ban email error and still ban patient", async () => {
+      const { sendPatientBannedEmail } = jest.requireMock("@/lib/actions/notification.actions");
+      sendPatientBannedEmail.mockRejectedValue(new Error("Email failed"));
+
+      const mockPatient = {
+        id: "p1",
+        userId: "u1",
+        user: { id: "u1", email: "patient@test.com", firstName: "Patient" },
+      };
+      (prisma.patient.update as jest.Mock).mockResolvedValue(mockPatient);
+      (prisma.user.update as jest.Mock).mockResolvedValue({ id: "u1", isActive: false });
+
+      const result = await banPatient("p1");
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe("Placement branch coverage", () => {
+    it("should skip update when patientIds/teamIds unchanged in updatePatientPlacement", async () => {
+      const mockServices = [
+        { id: "s1", patientIds: ["p1"], teamIds: ["d1"] },
+        { id: "s2", patientIds: ["p1"], teamIds: ["d1"] },
+      ];
+      (prisma.service.findMany as jest.Mock).mockResolvedValue(mockServices);
+      (prisma.service.update as jest.Mock).mockResolvedValue({});
+      (prisma.accessGrant.upsert as jest.Mock).mockResolvedValue({});
+      (prisma.accessGrant.updateMany as jest.Mock).mockResolvedValue({});
+
+      const result = await updatePatientPlacement("p1", "s1", "d1");
+      expect(result.success).toBe(true);
+    });
+
+    it("should skip update when teamIds unchanged in updateDoctorPlacement", async () => {
+      const mockServices = [
+        { id: "s1", teamIds: ["d1"], specializations: ["Cardio"] },
+        { id: "s2", teamIds: ["d1"], specializations: ["Cardio"] },
+      ];
+      (prisma.service.findMany as jest.Mock).mockResolvedValue(mockServices);
+      (prisma.service.update as jest.Mock).mockResolvedValue({});
+      (prisma.doctorProfile.upsert as jest.Mock).mockResolvedValue({});
+
+      const result = await updateDoctorPlacement("d1", "s1", "Cardio");
+      expect(result.success).toBe(true);
+    });
+
+    it("should cover MULTIPLE_CHOICE risk branch in calculatePatientRiskScore", async () => {
+      const mockPatient = {
+        id: "p1",
+        user: { firstName: "John", lastName: "Doe" },
+        questionnaireAssignments: [{
+          responses: [{
+            answer: "douleur thoracique",
+            createdAt: new Date(),
+            question: { questionType: "MULTIPLE_CHOICE", questionText: "Symptômes" }
+          }, {
+            answer: "4",
+            createdAt: new Date(),
+            question: { questionType: "SCALE", questionText: "Niveau douleur" }
+          }]
+        }]
+      };
+      (prisma.patient.findUnique as jest.Mock).mockResolvedValue(mockPatient);
+      (prisma.alert.count as jest.Mock).mockResolvedValue(0);
+
+      const result = await calculatePatientRiskScore("p1");
+      expect(result.success).toBe(true);
+      expect(result.data?.riskFactors).toContain("Symptôme critique: douleur thoracique");
+    });
+  });
 });
 
