@@ -10,25 +10,40 @@ jobs:
   build:
     name: Build and analyze
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-          
+
       - name: Install dependencies
         run: npm install --legacy-peer-deps
-        
+
       - name: Run tests and generate coverage
-        run: npm run test:coverage
-        
-      - uses: SonarSource/sonarqube-scan-action@v6
+        run: npm run test:coverage -- --passWithNoTests --forceExit
+        env:
+          NODE_ENV: test
+          NEXTAUTH_SECRET: ci-test-secret-32chars-placeholder
+          NEXTAUTH_URL: http://localhost:3000
+          JWT_SECRET: ci-test-secret-32chars-placeholder
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+          MONGODB_URI: mongodb://localhost:27017/medifollow_test
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-lcov
+          path: coverage/lcov.info
+          retention-days: 1
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v6
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
