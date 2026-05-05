@@ -1,6 +1,7 @@
 // import { withSentryConfig } from "@sentry/nextjs";  // Temporarily disabled
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: "standalone",
   swcMinify: false, // Disable SWC to avoid Windows binary issues
   typescript: {
     ignoreBuildErrors: true,
