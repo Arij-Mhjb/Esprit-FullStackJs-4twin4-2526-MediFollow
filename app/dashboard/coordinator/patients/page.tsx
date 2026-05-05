@@ -64,12 +64,12 @@ export default function CoordinatorPatientsPage() {
 
   const uniqueDepartments = useMemo(() => {
     const depts = patients.map((p) => p.department || "Général");
-    return Array.from(new Set(depts)).sort();
+    return Array.from(new Set(depts)).sort((a, b) => a.localeCompare(b));
   }, [patients]);
 
   const uniqueDoctors = useMemo(() => {
     const docs = patients.flatMap((p) => p.assignedDoctors || []);
-    return Array.from(new Set(docs)).sort();
+    return Array.from(new Set(docs)).sort((a, b) => a.localeCompare(b));
   }, [patients]);
   useEffect(() => {
     (async () => {
