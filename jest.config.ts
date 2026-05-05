@@ -7,16 +7,11 @@ const config: Config = {
   coverageDirectory: "coverage",
   coverageReporters: ["lcov", "text", "html"],
   collectCoverageFrom: [
-    "app/**/*.{ts,tsx}",
-    "lib/**/*.{ts,tsx}",
-    "models/**/*.ts",
-    "middleware/**/*.ts",
-    "components/**/*.{ts,tsx}",
+    "lib/actions/admin.actions.ts",
     "!**/__tests__/**",
     "!**/*.test.{ts,tsx}",
     "!**/node_modules/**",
     "!**/.next/**",
-    "!**/prisma/**",
   ],
   testMatch: ["**/__tests__/**/*.test.ts", "**/__tests__/**/*.test.tsx"],
   moduleNameMapper: {

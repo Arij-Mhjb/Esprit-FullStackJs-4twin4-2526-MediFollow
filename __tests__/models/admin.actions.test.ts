@@ -1022,4 +1022,241 @@ describe("Admin Actions", () => {
       expect(result.error).toBeDefined();
     });
   });
+
+  describe("Nurse error paths", () => {
+    it("should return error when getAllNurses fails", async () => {
+      (prisma.user.findMany as jest.Mock).mockRejectedValue(new Error("DB error"));
+      const result = await getAllNurses();
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+    });
+
+    it("should return error when email already exists in createNurse", async () => {
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({ id: "existing" });
+      const result = await createNurse({
+        email: "existing@test.com",
+        password: "pass",
+        firstName: "A",
+        lastName: "B",
+        phoneNumber: "000",
+      });
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/email/i);
+    });
+
+    it("should return error when createNurse DB fails", async () => {
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+      (prisma.user.create as jest.Mock).mockRejectedValue(new Error("DB error"));
+      const result = await createNurse({
+        email: "new@test.com",
+        password: "pass",
+        firstName: "A",
+        lastName: "B",
+        phoneNumber: "000",
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it("should return error when nurse not found in updateNurse", async () => {
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+      const result = await updateNurse("n-notfound", { firstName: "X" });
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/trouvé/i);
+    });
+
+    it("should return error when updateNurse DB fails", async () => {
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({ id: "n1", role: "NURSE", nurseProfile: null });
+      (prisma.user.update as jest.Mock).mockRejectedValue(new Error("DB error"));
+      const result = await updateNurse("n1", { firstName: "X" });
+      expect(result.success).toBe(false);
+    });
+
+    it("should delete nurse successfully when no active assignments", async () => {
+      (prisma.nurseAssignment.count as jest.Mock).mockResolvedValue(0);
+      (prisma.nurseProfile.deleteMany as jest.Mock).mockResolvedValue({});
+      (prisma.user.delete as jest.Mock).mockResolvedValue({});
+      const result = await deleteNurse("n1");
+      expect(result.success).toBe(true);
+    });
+
+    it("should return error when deleteNurse DB fails", async () => {
+      (prisma.nurseAssignment.count as jest.Mock).mockResolvedValue(0);
+      (prisma.nurseProfile.deleteMany as jest.Mock).mockRejectedValue(new Error("DB error"));
+      const result = await deleteNurse("n1");
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("Coordinator error paths", () => {
+    it("should return error when getAllCoordinators fails", async () => {
+      (prisma.user.findMany as jest.Mock).mockRejectedValue(new Error("DB error"));
+      const result = await getAllCoordinators();
+      expect(result.success).toBe(false);
+    });
+
+    it("should return error when email already exists in createCoordinator", async () => {
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({ id: "existing" });
+      const result = await createCoordinator({
+        email: "existing@test.com",
+        password: "pass",
+        firstName: "A",
+        lastName: "B",
+        phoneNumber: "000",
+      });
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/email/i);
+    });
+
+    it("should return error when coordinator not found in updateCoordinator", async () => {
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+      const result = await updateCoordinator("c-notfound", { firstName: "X" });
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/trouvé/i);
+    });
+
+    it("should return error when deleteCoordinator DB fails", async () => {
+      (prisma.coordinatorProfile.deleteMany as jest.Mock).mockRejectedValue(new Error("DB error"));
+      const result = await deleteCoordinator("c1");
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("Notification error paths", () => {
+    it("should return error when getAdminNotifications fails", async () => {
+      (prisma.notification.findMany as jest.Mock).mockRejectedValue(new Error("DB error"));
+      const result = await getAdminNotifications("admin-1");
+      expect(result.success).toBe(false);
+    });
+
+    it("should return error when markNotificationAsRead fails", async () => {
+      (prisma.notification.update as jest.Mock).mockRejectedValue(new Error("DB error"));
+      const result = await markNotificationAsRead("n1");
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("Doctor assignment error paths", () => {
+    it("should return error when assignPatientToDoctor fails", async () => {
+      (prisma.accessGrant.upsert as jest.Mock).mockRejectedValue(new Error("DB error"));
+      const result = await assignPatientToDoctor("p1", "d1");
+      expect(result.success).toBe(false);
+    });
+
+    it("should return error when getPatientDoctorAssignments fails", async () => {
+      (prisma.accessGrant.findMany as jest.Mock).mockRejectedValue(new Error("DB error"));
+      const result = await getPatientDoctorAssignments();
+      expect(result.success).toBe(false);
+    });
+
+    it("should return error when assignPatientToNurse fails with generic error", async () => {
+      (prisma.nurseAssignment.create as jest.Mock).mockRejectedValue(new Error("Generic error"));
+      const result = await assignPatientToNurse("p1", "n1", "admin-1");
+      expect(result.success).toBe(false);
+    });
+
+    it("should return error when unassignPatientFromNurse fails", async () => {
+      (prisma.nurseAssignment.updateMany as jest.Mock).mockRejectedValue(new Error("DB error"));
+      const result = await unassignPatientFromNurse("p1", "n1");
+      expect(result.success).toBe(false);
+    });
+
+    it("should return error when getNurseAssignments fails", async () => {
+      (prisma.nurseAssignment.findMany as jest.Mock).mockRejectedValue(new Error("DB error"));
+      const result = await getNurseAssignments("n1");
+      expect(result.success).toBe(false);
+    });
+
+    it("should return empty when getPendingPatients fails", async () => {
+      (prisma.patient.findMany as jest.Mock).mockRejectedValue(new Error("DB error"));
+      const result = await getPendingPatients();
+      expect(result).toEqual([]);
+    });
+
+    it("should return error when approvePatient fails", async () => {
+      (prisma.patient.update as jest.Mock).mockRejectedValue(new Error("DB error"));
+      const result = await approvePatient("p1");
+      expect(result.success).toBe(false);
+    });
+
+    it("should return error when banPatient fails", async () => {
+      (prisma.patient.update as jest.Mock).mockRejectedValue(new Error("DB error"));
+      const result = await banPatient("p1");
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("Placement and analytics error paths", () => {
+    it("should return error when updatePatientPlacement fails", async () => {
+      (prisma.service.findMany as jest.Mock).mockRejectedValue(new Error("DB error"));
+      const result = await updatePatientPlacement("p1", "s1", "d1");
+      expect(result.success).toBe(false);
+    });
+
+    it("should return error when getUserPlacementDetails fails", async () => {
+      (prisma.user.findUnique as jest.Mock).mockRejectedValue(new Error("DB error"));
+      (prisma.service.findMany as jest.Mock).mockRejectedValue(new Error("DB error"));
+      (prisma.accessGrant.findFirst as jest.Mock).mockRejectedValue(new Error("DB error"));
+      const result = await getUserPlacementDetails("u1");
+      expect(result.success).toBe(false);
+    });
+
+    it("should return not found when user is null in getUserPlacementDetails", async () => {
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+      (prisma.service.findMany as jest.Mock).mockResolvedValue([]);
+      (prisma.accessGrant.findFirst as jest.Mock).mockResolvedValue(null);
+      const result = await getUserPlacementDetails("u-notfound");
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/not found/i);
+    });
+
+    it("should return error when updateDoctorPlacement fails", async () => {
+      (prisma.service.findMany as jest.Mock).mockRejectedValue(new Error("DB error"));
+      const result = await updateDoctorPlacement("d1", "s1", "Cardio");
+      expect(result.success).toBe(false);
+    });
+
+    it("should return error when getActiveDoctors fails", async () => {
+      (prisma.user.findMany as jest.Mock).mockRejectedValue(new Error("DB error"));
+      const result = await getActiveDoctors();
+      expect(result.success).toBe(false);
+    });
+
+    it("should return error when getAssignedDoctorForPatient fails", async () => {
+      (prisma.accessGrant.findFirst as jest.Mock).mockRejectedValue(new Error("DB error"));
+      const result = await getAssignedDoctorForPatient("p1");
+      expect(result.success).toBe(false);
+    });
+
+    it("should return not found when patient is null in calculatePatientRiskScore", async () => {
+      (prisma.patient.findUnique as jest.Mock).mockResolvedValue(null);
+      const result = await calculatePatientRiskScore("p-notfound");
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/not found/i);
+    });
+
+    it("should return error when calculatePatientRiskScore fails", async () => {
+      (prisma.patient.findUnique as jest.Mock).mockRejectedValue(new Error("DB error"));
+      const result = await calculatePatientRiskScore("p1");
+      expect(result.success).toBe(false);
+    });
+
+    it("should return error when predictPatientAlerts fails", async () => {
+      (prisma.patient.findUnique as jest.Mock).mockRejectedValue(new Error("DB error"));
+      const result = await predictPatientAlerts("p1");
+      expect(result.success).toBe(false);
+    });
+
+    it("should return error when generatePatientRecommendations fails", async () => {
+      (prisma.patient.findUnique as jest.Mock).mockRejectedValue(new Error("DB error"));
+      const result = await generatePatientRecommendations("p1");
+      expect(result.success).toBe(false);
+    });
+
+    it("should return error when predictPatientCompliance fails", async () => {
+      (prisma.patient.findUnique as jest.Mock).mockRejectedValue(new Error("DB error"));
+      const result = await predictPatientCompliance("p1");
+      expect(result.success).toBe(false);
+    });
+  });
 });
+
