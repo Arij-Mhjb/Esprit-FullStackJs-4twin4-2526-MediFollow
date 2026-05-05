@@ -103,7 +103,7 @@ export default function MedicalHumanBody3D() {
         />
 
         {/* Environnement */}
-        <Environment preset="studio" />
+        <Environment preset="studio" resolution={256} />
 
         {/* Corps humain anatomique avec Suspense pour le chargement */}
         <Suspense fallback={<LoadingSpinner />}>

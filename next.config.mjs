@@ -35,8 +35,8 @@ const nextConfig = {
     }
     return config;
   },
-  // Ensure experimental features are enabled for server actions
   experimental: {
+    optimizeCss: true,
     serverActions: {
       bodySizeLimit: "10mb",
     },

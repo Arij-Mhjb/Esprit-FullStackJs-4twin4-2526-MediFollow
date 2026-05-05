@@ -261,6 +261,30 @@ Full request/response schemas are in [`/docs/API.md`](./docs/API.md).
 
 ---
 
+## 🤖 AI Usage
+
+This project was developed with significant assistance from Artificial Intelligence tools. AI was leveraged for:
+- **Code Generation**: Scaffolding, UI refactoring (Claude Design System), and Blockchain Move contracts.
+- **Intelligence Features**: Clinical risk analysis, vital signs parsing, and automated reporting powered by GPT-4o and Anthropic Claude.
+- **Documentation**: Automated generation of technical reports and development guides.
+
+For a detailed breakdown of tools, agents, LLMs, and prompts used, please refer to the [**AI Usage Report**](./AI_USAGE_REPORT.md).
+
+---
+
+## ♿ Accessibility
+
+MediFollow is committed to digital inclusion and accessibility. The platform has been audited against **WCAG 2.1 Level AA** standards.
+
+- **Current Status**: ✅ Level AA Compliant
+- **Automated Score**: 95/100 (Average Lighthouse Accessibility Score)
+- **Key Features**: Keyboard navigation, screen reader support, and focus management.
+
+For the full compliance breakdown and corrective measures, see the [**Accessibility Audit Report**](./ACCESSIBILITY_AUDIT.md).
+
+
+---
+
 ## Project Structure
 
 ```
