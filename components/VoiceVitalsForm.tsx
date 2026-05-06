@@ -50,6 +50,8 @@ export function VoiceVitalsForm({
   const [language, setLanguage] = useState<"fr-FR" | "en-US">(
     config.language === "en-US" ? "en-US" : "fr-FR"
   );
+  const networkRetryCountRef = useRef(0);
+  const maxNetworkRetries = 2;
 
   // Language-specific messages
   const messages = {
@@ -73,6 +75,12 @@ export function VoiceVitalsForm({
       recommencer: "Recommencer",
       formulaire_complete: "Formulaire complété!",
       donnees_enregistrees: "Vos données ont été enregistrées avec succès.",
+      erreur_reseau: "Connexion au service vocal impossible. Passage en mode manuel.",
+      erreur_permission: "Microphone non autorisé. Veuillez autoriser l'accès au micro dans votre navigateur.",
+      erreur_silence: "Aucun son détecté. Cliquez sur le micro et parlez.",
+      erreur_generique: "Erreur de reconnaissance vocale. Veuillez réessayer.",
+      nouvelle_tentative: "Nouvelle tentative...",
+      mode_manuel_auto: "Mode manuel activé automatiquement.",
     },
     "en-US": {
       progression: "Progress",
@@ -94,14 +102,37 @@ export function VoiceVitalsForm({
       recommencer: "Restart",
       formulaire_complete: "Form completed!",
       donnees_enregistrees: "Your data has been saved successfully.",
+      erreur_reseau: "Cannot connect to voice service. Switching to manual mode.",
+      erreur_permission: "Microphone not allowed. Please enable microphone access in your browser.",
+      erreur_silence: "No sound detected. Click the mic button and speak.",
+      erreur_generique: "Voice recognition error. Please try again.",
+      nouvelle_tentative: "Retrying...",
+      mode_manuel_auto: "Manual mode activated automatically.",
     },
   };
 
   const recognitionRef = useRef<any>(null);
   const synthRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const hasResultRef = useRef(false);
 
   const currentField = fields[currentFieldIndex];
   const progress = Math.round((currentFieldIndex / fields.length) * 100);
+
+  // Resolve a human-friendly message for a Web Speech API error code
+  const getSpeechErrorMessage = (errorCode: string, lang: "fr-FR" | "en-US"): string => {
+    const m = messages[lang];
+    switch (errorCode) {
+      case "network":
+        return m.erreur_reseau;
+      case "not-allowed":
+      case "service-not-allowed":
+        return m.erreur_permission;
+      case "no-speech":
+        return m.erreur_silence;
+      default:
+        return m.erreur_generique;
+    }
+  };
 
   // Initialize Speech Recognition
   useEffect(() => {
@@ -109,32 +140,37 @@ export function VoiceVitalsForm({
       (window as any).SpeechRecognition ||
       (window as any).webkitSpeechRecognition;
 
-    if (SpeechRecognition) {
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.language = language;
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = true;
+    if (!SpeechRecognition) return;
 
-      recognitionRef.current.onstart = () => {
+    const buildRecognition = () => {
+      const rec = new SpeechRecognition();
+      rec.language = language;
+      rec.continuous = false;
+      rec.interimResults = true;
+
+      rec.onstart = () => {
+        hasResultRef.current = false;
         setIsListening(true);
         setInterimTranscript("");
         setTranscript("");
+        setFeedback("");
       };
 
-      recognitionRef.current.onresult = (event: any) => {
+      rec.onresult = (event: any) => {
         let interim = "";
         let final = "";
 
         for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
+          const t = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
-            final += transcript + " ";
+            final += t + " ";
           } else {
-            interim += transcript;
+            interim += t;
           }
         }
 
         if (final) {
+          hasResultRef.current = true;
           setTranscript(final.trim());
           setInterimTranscript("");
         } else {
@@ -142,22 +178,60 @@ export function VoiceVitalsForm({
         }
       };
 
-      recognitionRef.current.onerror = (event: any) => {
+      rec.onerror = (event: any) => {
         console.error("Speech recognition error:", event.error);
-        setFeedback(
-          `${language === "en-US" ? "Error" : "Erreur"}: ${event.error}`
-        );
         setIsListening(false);
+
+        if (event.error === "network") {
+          networkRetryCountRef.current += 1;
+          if (networkRetryCountRef.current <= maxNetworkRetries) {
+            // Retry after a short delay
+            setFeedback(messages[language].nouvelle_tentative);
+            setTimeout(() => {
+              try {
+                recognitionRef.current = buildRecognition();
+                recognitionRef.current.start();
+              } catch (e) {
+                console.error("Retry failed:", e);
+                setFeedback(getSpeechErrorMessage("network", language));
+                setMode("manual");
+              }
+            }, 1500);
+          } else {
+            // Exhausted retries — switch to manual
+            networkRetryCountRef.current = 0;
+            setFeedback(
+              `${getSpeechErrorMessage("network", language)} ${messages[language].mode_manuel_auto}`
+            );
+            setTimeout(() => setMode("manual"), 2500);
+          }
+        } else if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+          setFeedback(getSpeechErrorMessage(event.error, language));
+        } else if (event.error === "no-speech") {
+          setFeedback(getSpeechErrorMessage("no-speech", language));
+        } else {
+          setFeedback(getSpeechErrorMessage(event.error, language));
+        }
       };
 
-      recognitionRef.current.onend = () => {
+      rec.onend = () => {
         setIsListening(false);
+        // If recognition ended with no result and no error already set, show hint
+        if (!hasResultRef.current) {
+          setFeedback((prev) =>
+            prev ? prev : messages[language].dites_quelque_chose
+          );
+        }
       };
-    }
+
+      return rec;
+    };
+
+    recognitionRef.current = buildRecognition();
 
     return () => {
       if (recognitionRef.current) {
-        recognitionRef.current.abort();
+        try { recognitionRef.current.abort(); } catch (_) {}
       }
     };
   }, [language]);
@@ -191,9 +265,15 @@ export function VoiceVitalsForm({
   // Start listening
   const startListening = () => {
     if (recognitionRef.current && !isListening) {
+      networkRetryCountRef.current = 0; // reset on manual trigger
       setTranscript("");
       setInterimTranscript("");
-      recognitionRef.current.start();
+      try {
+        recognitionRef.current.start();
+      } catch (e) {
+        console.error("Failed to start recognition:", e);
+        setFeedback(messages[language].erreur_generique);
+      }
     }
   };
 
