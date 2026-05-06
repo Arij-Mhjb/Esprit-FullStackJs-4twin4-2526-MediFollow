@@ -7,9 +7,8 @@ const config: Config = {
   coverageDirectory: "coverage",
   coverageReporters: ["lcov", "text", "html"],
   collectCoverageFrom: [
+    // Only collect coverage for files directly tested by the test suite
     "lib/actions/admin.actions.ts",
-    "!**/__tests__/**",
-    "!**/*.test.{ts,tsx}",
     "!**/node_modules/**",
     "!**/.next/**",
   ],
