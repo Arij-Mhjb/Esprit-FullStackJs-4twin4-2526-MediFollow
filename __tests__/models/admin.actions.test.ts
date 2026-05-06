@@ -1400,5 +1400,133 @@ describe("Admin Actions", () => {
       expect(result.data?.riskFactors).toContain("Symptôme critique: douleur thoracique");
     });
   });
+
+  describe("Advanced analytics branch coverage", () => {
+    it("should trigger trend increase prediction in predictPatientAlerts (>=3 scale responses increasing)", async () => {
+      const oldDate = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
+      const recentDate = new Date();
+      const mockPatient = {
+        id: "p1",
+        user: { firstName: "John", lastName: "Doe" },
+        questionnaireAssignments: [{
+          assignedAt: recentDate,
+          completedAt: recentDate,
+          responses: [
+            { answer: "2", createdAt: oldDate,    question: { questionType: "SCALE", questionText: "Pain" } },
+            { answer: "3", createdAt: oldDate,    question: { questionType: "SCALE", questionText: "Pain" } },
+            { answer: "3", createdAt: oldDate,    question: { questionType: "SCALE", questionText: "Pain" } },
+            { answer: "8", createdAt: recentDate, question: { questionType: "SCALE", questionText: "Pain" } },
+            { answer: "9", createdAt: recentDate, question: { questionType: "SCALE", questionText: "Pain" } },
+            { answer: "9", createdAt: recentDate, question: { questionType: "SCALE", questionText: "Pain" } },
+          ]
+        }]
+      };
+      (prisma.patient.findUnique as jest.Mock).mockResolvedValue(mockPatient);
+      const result = await predictPatientAlerts("p1");
+      expect(result.success).toBe(true);
+      expect(result.data?.predictions.some((p: any) => p.type === "TREND_INCREASE")).toBe(true);
+    });
+
+    it("should trigger critical symptom prediction in predictPatientAlerts", async () => {
+      const recentDate = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000); // 2 days ago
+      const mockPatient = {
+        id: "p1",
+        user: { firstName: "John", lastName: "Doe" },
+        questionnaireAssignments: [{
+          assignedAt: recentDate,
+          completedAt: null,
+          responses: [{
+            answer: "douleur thoracique intense",
+            createdAt: recentDate,
+            question: { questionType: "MULTIPLE_CHOICE", questionText: "Symptômes" }
+          }]
+        }]
+      };
+      (prisma.patient.findUnique as jest.Mock).mockResolvedValue(mockPatient);
+      const result = await predictPatientAlerts("p1");
+      expect(result.success).toBe(true);
+      expect(result.data?.predictions.some((p: any) => p.type === "RECURRENCE_RISK")).toBe(true);
+    });
+
+    it("should trigger compliance drop prediction in predictPatientAlerts", async () => {
+      const oldDate = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
+      const mockPatient = {
+        id: "p1",
+        user: { firstName: "John", lastName: "Doe" },
+        questionnaireAssignments: [
+          { assignedAt: oldDate, completedAt: null, responses: [] },
+          { assignedAt: oldDate, completedAt: null, responses: [] },
+          { assignedAt: oldDate, completedAt: null, responses: [] },
+          { assignedAt: oldDate, completedAt: null, responses: [] },
+          { assignedAt: oldDate, completedAt: null, responses: [] },
+        ]
+      };
+      (prisma.patient.findUnique as jest.Mock).mockResolvedValue(mockPatient);
+      const result = await predictPatientAlerts("p1");
+      expect(result.success).toBe(true);
+      expect(result.data?.predictions.some((p: any) => p.type === "COMPLIANCE_DROP")).toBe(true);
+    });
+
+    it("should trigger CRITICAL risk recommendations in generatePatientRecommendations", async () => {
+      const highRiskPatient = {
+        id: "p1",
+        user: { firstName: "John", lastName: "Doe" },
+        questionnaireAssignments: [{
+          responses: [{
+            answer: "10",
+            createdAt: new Date(),
+            question: { questionType: "SCALE", questionText: "Pain" }
+          }, {
+            answer: "10",
+            createdAt: new Date(),
+            question: { questionType: "SCALE", questionText: "Fatigue" }
+          }, {
+            answer: "10",
+            createdAt: new Date(),
+            question: { questionType: "SCALE", questionText: "Dyspnea" }
+          }, {
+            answer: "10",
+            createdAt: new Date(),
+            question: { questionType: "SCALE", questionText: "Anxiety" }
+          }, {
+            answer: "10",
+            createdAt: new Date(),
+            question: { questionType: "SCALE", questionText: "Nausea" }
+          }]
+        }]
+      };
+      (prisma.patient.findUnique as jest.Mock).mockResolvedValue(highRiskPatient);
+      (prisma.alert.count as jest.Mock).mockResolvedValue(10);
+      (prisma.nurseAssignment.findFirst as jest.Mock).mockResolvedValue(null);
+
+      const result = await generatePatientRecommendations("p1");
+      expect(result.success).toBe(true);
+      expect(result.data?.recommendations.some((r: any) => r.priority === "URGENT" || r.priority === "HIGH")).toBe(true);
+    });
+
+    it("should return error from getGlobalHospitalRisk when DB fails", async () => {
+      (prisma.patient.findMany as jest.Mock).mockRejectedValue(new Error("DB error"));
+      const result = await getGlobalHospitalRisk();
+      expect(result.success).toBe(false);
+    });
+
+    it("should return error from getAllPredictiveAlerts when DB fails", async () => {
+      (prisma.patient.findMany as jest.Mock).mockRejectedValue(new Error("DB error"));
+      const result = await getAllPredictiveAlerts();
+      expect(result.success).toBe(false);
+    });
+
+    it("should return error from getAllAIRecommendations when DB fails", async () => {
+      (prisma.patient.findMany as jest.Mock).mockRejectedValue(new Error("DB error"));
+      const result = await getAllAIRecommendations();
+      expect(result.success).toBe(false);
+    });
+
+    it("should return error from detectAnomalies when DB fails", async () => {
+      (prisma.questionnaireResponse.findMany as jest.Mock).mockRejectedValue(new Error("DB error"));
+      const result = await detectAnomalies();
+      expect(result.success).toBe(false);
+    });
+  });
 });
 
