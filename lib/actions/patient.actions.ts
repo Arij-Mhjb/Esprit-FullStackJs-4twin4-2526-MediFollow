@@ -1202,48 +1202,57 @@ export async function uploadPatientProfileImage(
 }
 
 /**
- * Get patients filtered by doctor's specialty
+ * Build the set of Patient.ids that are assigned to the given doctor
+ * via the Service model (teamIds / patientIds) or AccessGrant.
+ */
+async function getAssignedPatientIds(doctorUserId: string): Promise<string[]> {
+  const [services, grants] = await Promise.all([
+    // Services where this doctor is a team member
+    prisma.service.findMany({
+      where: { isActive: true, teamIds: { has: doctorUserId } },
+      select: { patientIds: true },
+    }),
+    // Direct access grants (patient → doctor)
+    prisma.accessGrant.findMany({
+      where: { doctorId: doctorUserId, isActive: true },
+      select: { patientId: true },
+    }),
+  ]);
+
+  // patientIds from services are Patient.id directly
+  const servicePatientIds = services.flatMap((s) => s.patientIds ?? []);
+
+  // patientIds from grants are User.id — resolve to Patient.id
+  const grantUserIds = grants.map((g) => g.patientId);
+  const grantPatients =
+    grantUserIds.length > 0
+      ? await prisma.patient.findMany({
+          where: { userId: { in: grantUserIds } },
+          select: { id: true },
+        })
+      : [];
+  const grantPatientIds = grantPatients.map((p) => p.id);
+
+  return Array.from(new Set([...servicePatientIds, ...grantPatientIds]));
+}
+
+/**
+ * Get patients filtered by actual assignment to this doctor
+ * (Service.teamIds / patientIds union AccessGrant)
  */
 export async function getPatientsByDoctorSpecialty(
   doctorUserId: string
 ): Promise<PatientWithUser[]> {
   try {
-    // Get doctor's profile to retrieve specialty
-    const doctorProfile = await prisma.doctorProfile.findUnique({
-      where: { userId: doctorUserId },
-      select: { specialty: true },
-    });
+    const assignedIds = await getAssignedPatientIds(doctorUserId);
 
-    if (!doctorProfile?.specialty) {
-      // If no specialty, return all active patients
-      return await prisma.patient.findMany({
-        where: { isActive: true },
-        include: {
-          user: {
-            select: {
-              id: true,
-              email: true,
-              firstName: true,
-              lastName: true,
-              role: true,
-              phoneNumber: true,
-              isActive: true,
-              lastLogin: true,
-              createdAt: true,
-              updatedAt: true,
-            },
-          },
-        },
-        orderBy: { medicalRecordNumber: "asc" },
-      });
-    }
+    const where =
+      assignedIds.length > 0
+        ? { id: { in: assignedIds }, isActive: true }
+        : { isActive: true }; // fallback: no assignments yet, show all
 
-    // Get patients with matching specialty field
-    const patients = await prisma.patient.findMany({
-      where: {
-        isActive: true,
-        // Match specialty if patient has one defined
-      },
+    return await prisma.patient.findMany({
+      where,
       include: {
         user: {
           select: {
@@ -1259,19 +1268,37 @@ export async function getPatientsByDoctorSpecialty(
             updatedAt: true,
           },
         },
+        alerts: {
+          where: { status: "OPEN" },
+          select: { id: true, status: true, severity: true },
+          orderBy: { createdAt: "desc" },
+          take: 10,
+        },
+        vitalRecords: {
+          select: {
+            id: true,
+            systolicBP: true,
+            diastolicBP: true,
+            heartRate: true,
+            temperature: true,
+            oxygenSaturation: true,
+            weight: true,
+            recordedAt: true,
+          },
+          orderBy: { recordedAt: "desc" },
+          take: 1,
+        },
       },
       orderBy: { medicalRecordNumber: "asc" },
     });
-
-    return patients;
   } catch (error) {
-    console.error("Error fetching patients by doctor specialty:", error);
+    console.error("Error fetching patients by doctor assignment:", error);
     return [];
   }
 }
 
 /**
- * Get patients by doctor's specialty with all vital records
+ * Get patients assigned to this doctor with all vital records
  */
 export async function getPatientsByDoctorSpecialtyWithAllVitals(
   doctorUserId: string
@@ -1292,52 +1319,15 @@ export async function getPatientsByDoctorSpecialtyWithAllVitals(
   >
 > {
   try {
-    // Get doctor's profile to retrieve specialty
-    const doctorProfile = await prisma.doctorProfile.findUnique({
-      where: { userId: doctorUserId },
-      select: { specialty: true },
-    });
+    const assignedIds = await getAssignedPatientIds(doctorUserId);
 
-    if (!doctorProfile?.specialty) {
-      // If no specialty, return all active patients with vitals
-      return await prisma.patient.findMany({
-        where: { isActive: true },
-        include: {
-          user: {
-            select: {
-              id: true,
-              email: true,
-              firstName: true,
-              lastName: true,
-              role: true,
-              phoneNumber: true,
-              isActive: true,
-              lastLogin: true,
-              createdAt: true,
-              updatedAt: true,
-            },
-          },
-          vitalRecords: {
-            select: {
-              id: true,
-              systolicBP: true,
-              diastolicBP: true,
-              heartRate: true,
-              temperature: true,
-              oxygenSaturation: true,
-              weight: true,
-              recordedAt: true,
-            },
-            orderBy: { recordedAt: "desc" },
-          },
-        },
-        orderBy: { medicalRecordNumber: "asc" },
-      });
-    }
+    const where =
+      assignedIds.length > 0
+        ? { id: { in: assignedIds }, isActive: true }
+        : { isActive: true };
 
-    // Get patients with matching specialty and all vitals
     const patients = await prisma.patient.findMany({
-      where: { isActive: true },
+      where,
       include: {
         user: {
           select: {
@@ -1373,7 +1363,7 @@ export async function getPatientsByDoctorSpecialtyWithAllVitals(
     return patients as any;
   } catch (error) {
     console.error(
-      "Error fetching patients by doctor specialty with vitals:",
+      "Error fetching assigned patients with vitals:",
       error
     );
     return [];
