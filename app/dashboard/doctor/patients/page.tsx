@@ -24,7 +24,7 @@ export default async function DoctorPatientsPage() {
           Patients
         </h1>
         <p className="text-gray-600 dark:text-gray-400 mt-1">
-          Gérez et surveillez vos patients
+          Gérez et surveillez vos patients assignés
         </p>
         {doctorProfile?.data?.specialty && (
           <p className="text-sm text-green-600 dark:text-green-400 mt-2 font-medium">
@@ -199,21 +199,12 @@ export default async function DoctorPatientsPage() {
       {patients.length === 0 && (
         <div className="text-center py-12 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800">
           <p className="text-gray-600 dark:text-gray-400 mb-2">
-            Aucun patient trouvé
+            Aucun patient assigné
           </p>
-          {doctorProfile?.data?.specialty && (
-            <p className="text-sm text-gray-500 dark:text-gray-500">
-              Aucun patient n'a le diagnostic correspondant à votre spécialité:{" "}
-              <span className="font-medium capitalize">
-                {doctorProfile.data.specialty}
-              </span>
-            </p>
-          )}
-          {!doctorProfile?.data?.specialty && (
-            <p className="text-sm text-gray-500 dark:text-gray-500">
-              Veuillez définir votre spécialité dans votre profil
-            </p>
-          )}
+          <p className="text-sm text-gray-500 dark:text-gray-500">
+            Aucun patient ne vous a encore été assigné via un service ou un accès direct.
+            Contactez l&apos;administrateur pour obtenir des assignations.
+          </p>
         </div>
       )}
     </div>
