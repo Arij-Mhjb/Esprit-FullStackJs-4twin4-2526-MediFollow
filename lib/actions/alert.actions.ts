@@ -322,7 +322,7 @@ export async function getAlertsByDoctorSpecialty(
     const where: any = {
       patient: {
         medicalProfile: {
-          specialty: doctorProfile.specialty,
+          is: { specialty: doctorProfile.specialty },
         },
       },
     };
@@ -367,7 +367,7 @@ export async function getAlertStatsByDoctorSpecialty(doctorId: string) {
       where: {
         patient: {
           medicalProfile: {
-            specialty: doctorProfile.specialty,
+            is: { specialty: doctorProfile.specialty },
           },
         },
       },
@@ -378,7 +378,7 @@ export async function getAlertStatsByDoctorSpecialty(doctorId: string) {
         status: AlertStatus.OPEN,
         patient: {
           medicalProfile: {
-            specialty: doctorProfile.specialty,
+            is: { specialty: doctorProfile.specialty },
           },
         },
       },
@@ -389,7 +389,7 @@ export async function getAlertStatsByDoctorSpecialty(doctorId: string) {
         status: AlertStatus.ACKNOWLEDGED,
         patient: {
           medicalProfile: {
-            specialty: doctorProfile.specialty,
+            is: { specialty: doctorProfile.specialty },
           },
         },
       },
@@ -400,7 +400,7 @@ export async function getAlertStatsByDoctorSpecialty(doctorId: string) {
         status: AlertStatus.RESOLVED,
         patient: {
           medicalProfile: {
-            specialty: doctorProfile.specialty,
+            is: { specialty: doctorProfile.specialty },
           },
         },
       },
@@ -411,7 +411,7 @@ export async function getAlertStatsByDoctorSpecialty(doctorId: string) {
         severity: AlertSeverity.CRITICAL,
         patient: {
           medicalProfile: {
-            specialty: doctorProfile.specialty,
+            is: { specialty: doctorProfile.specialty },
           },
         },
       },

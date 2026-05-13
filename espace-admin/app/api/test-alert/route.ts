@@ -1,16 +1,9 @@
-import Pusher from "pusher";
+import { pusherServer } from "@/lib/pusher";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma"; 
 import { sendAdminAlertSMS } from "@/lib/actions/notification.actions";
 import { AlertType, AlertSeverity, AlertStatus } from "@/types/medifollow.types";
 
-const pusherServer = new Pusher({
-  appId: "2137291",
-  key: "ba707a9085e391ba151b",
-  secret: "cf52ff92044e670f8ec0",
-  cluster: "eu",
-  useTLS: true,
-});
 
 export async function POST() {
   try {

@@ -38,7 +38,7 @@ export async function getPatientByUserId(
       },
     });
 
-    return patient;
+    return patient as any;
   } catch (error) {
     console.error("Error fetching patient by user ID:", error);
     return null;
@@ -72,7 +72,7 @@ export async function getPatientById(
       },
     });
 
-    return patient;
+    return patient as any;
   } catch (error) {
     console.error("Error fetching patient by ID:", error);
     return null;
@@ -118,7 +118,7 @@ export async function getPatientWithRelations(
       },
     });
 
-    return patient;
+    return patient as any;
   } catch (error) {
     console.error("Error fetching patient with relations:", error);
     return null;
@@ -163,7 +163,7 @@ export async function getAllPatients(): Promise<PatientWithUser[]> {
       orderBy: { createdAt: "desc" },
     });
 
-    return patients;
+    return patients as any;
   } catch (error) {
     console.error("Error fetching all patients:", error);
     return [];
@@ -216,7 +216,7 @@ export async function getAllPatientsWithAllVitals(): Promise<
       orderBy: { createdAt: "desc" },
     });
 
-    return patients;
+    return patients as any;
   } catch (error) {
     console.error("Error fetching patients with vitals:", error);
     return [];
@@ -262,12 +262,12 @@ export async function createPatient(
         dateOfBirth: data.dateOfBirth,
         gender: data.gender,
         bloodType: data.bloodType,
-        address: data.address as Prisma.InputJsonValue,
-        emergencyContact: data.emergencyContact as Prisma.InputJsonValue,
+        address: data.address as any,
+        emergencyContact: data.emergencyContact as any,
         dischargeDate: data.dischargeDate,
         diagnosis: data.diagnosis,
-        medications: data.medications as Prisma.InputJsonValue,
-        vitalThresholds: data.vitalThresholds as Prisma.InputJsonValue,
+        medications: data.medications as any,
+        vitalThresholds: data.vitalThresholds as any,
       },
       include: {
         user: {
@@ -291,7 +291,7 @@ export async function createPatient(
     revalidatePath("/dashboard/doctor");
     revalidatePath("/dashboard/admin");
 
-    return { success: true, patient };
+    return { success: true, patient: patient as any };
   } catch (error) {
     console.error("Error creating patient:", error);
     return {
@@ -315,17 +315,17 @@ export async function updatePatient(
         ...(data.dateOfBirth && { dateOfBirth: data.dateOfBirth }),
         ...(data.gender && { gender: data.gender }),
         ...(data.bloodType && { bloodType: data.bloodType }),
-        ...(data.address && { address: data.address as Prisma.InputJsonValue }),
+        ...(data.address && { address: data.address as any }),
         ...(data.emergencyContact && {
-          emergencyContact: data.emergencyContact as Prisma.InputJsonValue,
+          emergencyContact: data.emergencyContact as any,
         }),
         ...(data.dischargeDate && { dischargeDate: data.dischargeDate }),
         ...(data.diagnosis && { diagnosis: data.diagnosis }),
         ...(data.medications && {
-          medications: data.medications as Prisma.InputJsonValue,
+          medications: data.medications as any,
         }),
         ...(data.vitalThresholds && {
-          vitalThresholds: data.vitalThresholds as Prisma.InputJsonValue,
+          vitalThresholds: data.vitalThresholds as any,
         }),
       },
       include: {
@@ -350,7 +350,7 @@ export async function updatePatient(
     revalidatePath("/dashboard/doctor");
     revalidatePath("/dashboard/admin");
 
-    return { success: true, patient };
+    return { success: true, patient: patient as any };
   } catch (error) {
     console.error("Error updating patient:", error);
     return {
@@ -421,7 +421,7 @@ export async function searchPatients(
       take: 20,
     });
 
-    return patients;
+    return patients as any;
   } catch (error) {
     console.error("Error searching patients:", error);
     return [];
@@ -468,12 +468,12 @@ export async function registerPatient(
         dateOfBirth: data.dateOfBirth,
         gender: data.gender,
         bloodType: data.bloodType,
-        address: data.address as Prisma.InputJsonValue,
-        emergencyContact: data.emergencyContact as Prisma.InputJsonValue,
+        address: data.address as any,
+        emergencyContact: data.emergencyContact as any,
         dischargeDate: data.dischargeDate,
         diagnosis: data.diagnosis,
-        medications: data.medications as Prisma.InputJsonValue,
-        vitalThresholds: data.vitalThresholds as Prisma.InputJsonValue,
+        medications: data.medications as any,
+        vitalThresholds: data.vitalThresholds as any,
         isActive: false, // Pending approval
       },
       include: {
@@ -502,7 +502,7 @@ export async function registerPatient(
     console.log(
       `✅ Patient registered successfully (pending approval): ${data.userId}`
     );
-    return { success: true, patient };
+    return { success: true, patient: patient as any };
   } catch (error) {
     console.error("Error registering patient:", error);
     return {
@@ -542,7 +542,7 @@ export async function getPendingPatients(): Promise<PatientWithUser[]> {
       },
     });
 
-    return patients;
+    return patients as any;
   } catch (error) {
     console.error("Error fetching pending patients:", error);
     return [];
@@ -583,7 +583,7 @@ export async function activatePatient(
     revalidatePath("/dashboard/patient");
 
     console.log(`✅ Patient activated: ${patientId}`);
-    return { success: true, patient };
+    return { success: true, patient: patient as any };
   } catch (error) {
     console.error("Error activating patient:", error);
     return {
@@ -810,7 +810,7 @@ export async function getDashboardStatsByDoctorSpecialty(doctorId: string) {
     const totalPatients = await prisma.patient.count({
       where: {
         medicalProfile: {
-          specialty: doctorProfile.specialty,
+          is: { specialty: doctorProfile.specialty },
         },
         user: {
           isActive: true,
@@ -822,7 +822,7 @@ export async function getDashboardStatsByDoctorSpecialty(doctorId: string) {
     const newPatientsWeek = await prisma.patient.count({
       where: {
         medicalProfile: {
-          specialty: doctorProfile.specialty,
+          is: { specialty: doctorProfile.specialty },
         },
         createdAt: {
           gte: startOfWeek,
@@ -834,7 +834,7 @@ export async function getDashboardStatsByDoctorSpecialty(doctorId: string) {
     const newPatientsMonth = await prisma.patient.count({
       where: {
         medicalProfile: {
-          specialty: doctorProfile.specialty,
+          is: { specialty: doctorProfile.specialty },
         },
         createdAt: {
           gte: startOfMonth,
@@ -847,7 +847,7 @@ export async function getDashboardStatsByDoctorSpecialty(doctorId: string) {
       where: {
         patient: {
           medicalProfile: {
-            specialty: doctorProfile.specialty,
+            is: { specialty: doctorProfile.specialty },
           },
         },
         recordedAt: {
@@ -861,7 +861,7 @@ export async function getDashboardStatsByDoctorSpecialty(doctorId: string) {
       where: {
         patient: {
           medicalProfile: {
-            specialty: doctorProfile.specialty,
+            is: { specialty: doctorProfile.specialty },
           },
         },
         recordedAt: {
@@ -875,7 +875,7 @@ export async function getDashboardStatsByDoctorSpecialty(doctorId: string) {
       where: {
         patient: {
           medicalProfile: {
-            specialty: doctorProfile.specialty,
+            is: { specialty: doctorProfile.specialty },
           },
         },
         recordedAt: {
@@ -894,7 +894,7 @@ export async function getDashboardStatsByDoctorSpecialty(doctorId: string) {
       where: {
         patient: {
           medicalProfile: {
-            specialty: doctorProfile.specialty,
+            is: { specialty: doctorProfile.specialty },
           },
         },
       },
@@ -905,7 +905,7 @@ export async function getDashboardStatsByDoctorSpecialty(doctorId: string) {
         status: "OPEN",
         patient: {
           medicalProfile: {
-            specialty: doctorProfile.specialty,
+            is: { specialty: doctorProfile.specialty },
           },
         },
       },
@@ -917,7 +917,7 @@ export async function getDashboardStatsByDoctorSpecialty(doctorId: string) {
         status: "OPEN",
         patient: {
           medicalProfile: {
-            specialty: doctorProfile.specialty,
+            is: { specialty: doctorProfile.specialty },
           },
         },
       },
@@ -928,7 +928,7 @@ export async function getDashboardStatsByDoctorSpecialty(doctorId: string) {
         status: "RESOLVED",
         patient: {
           medicalProfile: {
-            specialty: doctorProfile.specialty,
+            is: { specialty: doctorProfile.specialty },
           },
         },
       },
@@ -945,7 +945,7 @@ export async function getDashboardStatsByDoctorSpecialty(doctorId: string) {
         resolvedAt: { not: null },
         patient: {
           medicalProfile: {
-            specialty: doctorProfile.specialty,
+            is: { specialty: doctorProfile.specialty },
           },
         },
       },
@@ -974,7 +974,7 @@ export async function getDashboardStatsByDoctorSpecialty(doctorId: string) {
       },
       where: {
         medicalProfile: {
-          specialty: doctorProfile.specialty,
+          is: { specialty: doctorProfile.specialty },
         },
         bloodType: { not: null },
       },
@@ -985,7 +985,7 @@ export async function getDashboardStatsByDoctorSpecialty(doctorId: string) {
       where: {
         patient: {
           medicalProfile: {
-            specialty: doctorProfile.specialty,
+            is: { specialty: doctorProfile.specialty },
           },
         },
         occurredAt: {
@@ -1146,10 +1146,10 @@ export async function updatePatientProfile(
         ...(data.bio !== undefined && { bio: data.bio }),
         ...(data.bloodType && { bloodType: data.bloodType as any }),
         ...(data.address && {
-          address: data.address as Prisma.InputJsonValue,
+          address: data.address as any,
         }),
         ...(data.emergencyContact && {
-          emergencyContact: data.emergencyContact as Prisma.InputJsonValue,
+          emergencyContact: data.emergencyContact as any,
         }),
         ...(data.dateOfBirth && { dateOfBirth: new Date(data.dateOfBirth) }),
         ...(data.gender && { gender: data.gender as any }),
@@ -1235,14 +1235,16 @@ export async function getPatientsByDoctorSpecialty(
           },
         },
         orderBy: { medicalRecordNumber: "asc" },
-      });
+      }) as any;
     }
 
     // Get patients with matching specialty field
     const patients = await prisma.patient.findMany({
       where: {
         isActive: true,
-        // Match specialty if patient has one defined
+        medicalProfile: {
+          is: { specialty: doctorProfile.specialty },
+        },
       },
       include: {
         user: {
@@ -1263,7 +1265,7 @@ export async function getPatientsByDoctorSpecialty(
       orderBy: { medicalRecordNumber: "asc" },
     });
 
-    return patients;
+    return patients as any;
   } catch (error) {
     console.error("Error fetching patients by doctor specialty:", error);
     return [];
@@ -1332,12 +1334,17 @@ export async function getPatientsByDoctorSpecialtyWithAllVitals(
           },
         },
         orderBy: { medicalRecordNumber: "asc" },
-      });
+      }) as any;
     }
 
     // Get patients with matching specialty and all vitals
     const patients = await prisma.patient.findMany({
-      where: { isActive: true },
+      where: {
+        isActive: true,
+        medicalProfile: {
+          is: { specialty: doctorProfile.specialty },
+        },
+      },
       include: {
         user: {
           select: {

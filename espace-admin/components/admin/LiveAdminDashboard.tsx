@@ -266,7 +266,7 @@ export default function LiveAdminDashboard({
   }, []);
 
   useEffect(() => {
-    const pusher = new Pusher("ba707a9085e391ba151b", { cluster: "eu" });
+    const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY || "ba707a9085e391ba151b", { cluster: "eu" });
     const channel = pusher.subscribe("admin-updates");
 
     channel.bind(

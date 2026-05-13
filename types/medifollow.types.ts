@@ -1,107 +1,58 @@
 /**
  * MediFollow Platform - TypeScript Type Definitions
- * Generated from Prisma Schema
+ * Re-exports Prisma enums for type compatibility
  * Date: March 2, 2026
  */
 
 // ============================================
-// ENUMS
+// ENUMS - Imported from Prisma and re-exported for type safety
 // ============================================
 
-export enum Role {
-  PATIENT = "PATIENT",
-  DOCTOR = "DOCTOR",
-  ADMIN = "ADMIN",
-  NURSE = "NURSE",
-  COORDINATOR = "COORDINATOR",
-}
+import {
+  Role as _Role,
+  Gender as _Gender,
+  BloodType as _BloodType,
+  Severity as _Severity,
+  AlertType as _AlertType,
+  AlertSeverity as _AlertSeverity,
+  AlertStatus as _AlertStatus,
+  BlockchainStatus as _BlockchainStatus,
+  NotificationType as _NotificationType,
+  NotificationChannel as _NotificationChannel,
+  CommunicationType as _CommunicationType,
+  ComplianceStatus as _ComplianceStatus,
+  VitalStatus as _VitalStatus,
+  ReviewStatus as _ReviewStatus,
+} from "@prisma/client";
 
-export enum Gender {
-  MALE = "MALE",
-  FEMALE = "FEMALE",
-  OTHER = "OTHER",
-}
-
-export enum BloodType {
-  A_POSITIVE = "A_POSITIVE",
-  A_NEGATIVE = "A_NEGATIVE",
-  B_POSITIVE = "B_POSITIVE",
-  B_NEGATIVE = "B_NEGATIVE",
-  AB_POSITIVE = "AB_POSITIVE",
-  AB_NEGATIVE = "AB_NEGATIVE",
-  O_POSITIVE = "O_POSITIVE",
-  O_NEGATIVE = "O_NEGATIVE",
-}
-
-export enum Severity {
-  MILD = "MILD",
-  MODERATE = "MODERATE",
-  SEVERE = "SEVERE",
-}
-
-export enum AlertType {
-  VITAL = "VITAL",
-  SYMPTOM = "SYMPTOM",
-  MEDICATION = "MEDICATION",
-  SYSTEM = "SYSTEM",
-}
-
-export enum AlertSeverity {
-  LOW = "LOW",
-  MEDIUM = "MEDIUM",
-  HIGH = "HIGH",
-  CRITICAL = "CRITICAL",
-}
-
-export enum AlertStatus {
-  OPEN = "OPEN",
-  ACKNOWLEDGED = "ACKNOWLEDGED",
-  RESOLVED = "RESOLVED",
-  CLOSED = "CLOSED",
-}
-
-export enum BlockchainStatus {
-  PENDING = "PENDING",
-  CONFIRMED = "CONFIRMED",
-  FAILED = "FAILED",
-}
-
-export enum NotificationType {
-  ALERT = "ALERT",
-  REMINDER = "REMINDER",
-  SYSTEM = "SYSTEM",
-  MESSAGE = "MESSAGE",
-}
-
-export enum NotificationChannel {
-  IN_APP = "IN_APP",
-  EMAIL = "EMAIL",
-  SMS = "SMS",
-  PUSH = "PUSH",
-}
-
-export enum CommunicationType {
-  REMINDER = "REMINDER",
-  GUIDANCE = "GUIDANCE",
-  FOLLOW_UP = "FOLLOW_UP",
-}
-
-export enum ComplianceStatus {
-  COMPLIANT = "COMPLIANT",
-  PARTIAL = "PARTIAL",
-  NON_COMPLIANT = "NON_COMPLIANT",
-}
-
-export enum VitalStatus {
-  NORMAL = "NORMAL",
-  A_VERIFIER = "A_VERIFIER",
-  CRITIQUE = "CRITIQUE",
-}
-
-export enum ReviewStatus {
-  PENDING = "PENDING",
-  REVIEWED = "REVIEWED",
-}
+export type Role = _Role;
+export const Role = _Role;
+export type Gender = _Gender;
+export const Gender = _Gender;
+export type BloodType = _BloodType;
+export const BloodType = _BloodType;
+export type Severity = _Severity;
+export const Severity = _Severity;
+export type AlertType = _AlertType;
+export const AlertType = _AlertType;
+export type AlertSeverity = _AlertSeverity;
+export const AlertSeverity = _AlertSeverity;
+export type AlertStatus = _AlertStatus;
+export const AlertStatus = _AlertStatus;
+export type BlockchainStatus = _BlockchainStatus;
+export const BlockchainStatus = _BlockchainStatus;
+export type NotificationType = _NotificationType;
+export const NotificationType = _NotificationType;
+export type NotificationChannel = _NotificationChannel;
+export const NotificationChannel = _NotificationChannel;
+export type CommunicationType = _CommunicationType;
+export const CommunicationType = _CommunicationType;
+export type ComplianceStatus = _ComplianceStatus;
+export const ComplianceStatus = _ComplianceStatus;
+export type VitalStatus = _VitalStatus;
+export const VitalStatus = _VitalStatus;
+export type ReviewStatus = _ReviewStatus;
+export const ReviewStatus = _ReviewStatus;
 
 // ============================================
 // EMBEDDED TYPES (NO DEPENDENCIES)
@@ -119,7 +70,7 @@ export type EmergencyContact = {
   name: string;
   relationship: string;
   phoneNumber: string;
-  email?: string;
+  email?: string | null;
 };
 
 export type Medication = {
@@ -128,7 +79,7 @@ export type Medication = {
   frequency: string;
   startDate: Date;
   endDate?: Date | null;
-  notes?: string;
+  notes?: string | null;
 };
 
 export type VitalRange = {
