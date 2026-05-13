@@ -810,7 +810,7 @@ export async function getDashboardStatsByDoctorSpecialty(doctorId: string) {
     const totalPatients = await prisma.patient.count({
       where: {
         medicalProfile: {
-          specialty: doctorProfile.specialty,
+          is: { specialty: doctorProfile.specialty },
         },
         user: {
           isActive: true,
@@ -822,7 +822,7 @@ export async function getDashboardStatsByDoctorSpecialty(doctorId: string) {
     const newPatientsWeek = await prisma.patient.count({
       where: {
         medicalProfile: {
-          specialty: doctorProfile.specialty,
+          is: { specialty: doctorProfile.specialty },
         },
         createdAt: {
           gte: startOfWeek,
@@ -834,7 +834,7 @@ export async function getDashboardStatsByDoctorSpecialty(doctorId: string) {
     const newPatientsMonth = await prisma.patient.count({
       where: {
         medicalProfile: {
-          specialty: doctorProfile.specialty,
+          is: { specialty: doctorProfile.specialty },
         },
         createdAt: {
           gte: startOfMonth,
@@ -847,7 +847,7 @@ export async function getDashboardStatsByDoctorSpecialty(doctorId: string) {
       where: {
         patient: {
           medicalProfile: {
-            specialty: doctorProfile.specialty,
+            is: { specialty: doctorProfile.specialty },
           },
         },
         recordedAt: {
@@ -861,7 +861,7 @@ export async function getDashboardStatsByDoctorSpecialty(doctorId: string) {
       where: {
         patient: {
           medicalProfile: {
-            specialty: doctorProfile.specialty,
+            is: { specialty: doctorProfile.specialty },
           },
         },
         recordedAt: {
@@ -875,7 +875,7 @@ export async function getDashboardStatsByDoctorSpecialty(doctorId: string) {
       where: {
         patient: {
           medicalProfile: {
-            specialty: doctorProfile.specialty,
+            is: { specialty: doctorProfile.specialty },
           },
         },
         recordedAt: {
@@ -894,7 +894,7 @@ export async function getDashboardStatsByDoctorSpecialty(doctorId: string) {
       where: {
         patient: {
           medicalProfile: {
-            specialty: doctorProfile.specialty,
+            is: { specialty: doctorProfile.specialty },
           },
         },
       },
@@ -905,7 +905,7 @@ export async function getDashboardStatsByDoctorSpecialty(doctorId: string) {
         status: "OPEN",
         patient: {
           medicalProfile: {
-            specialty: doctorProfile.specialty,
+            is: { specialty: doctorProfile.specialty },
           },
         },
       },
@@ -917,7 +917,7 @@ export async function getDashboardStatsByDoctorSpecialty(doctorId: string) {
         status: "OPEN",
         patient: {
           medicalProfile: {
-            specialty: doctorProfile.specialty,
+            is: { specialty: doctorProfile.specialty },
           },
         },
       },
@@ -928,7 +928,7 @@ export async function getDashboardStatsByDoctorSpecialty(doctorId: string) {
         status: "RESOLVED",
         patient: {
           medicalProfile: {
-            specialty: doctorProfile.specialty,
+            is: { specialty: doctorProfile.specialty },
           },
         },
       },
@@ -945,7 +945,7 @@ export async function getDashboardStatsByDoctorSpecialty(doctorId: string) {
         resolvedAt: { not: null },
         patient: {
           medicalProfile: {
-            specialty: doctorProfile.specialty,
+            is: { specialty: doctorProfile.specialty },
           },
         },
       },
@@ -974,7 +974,7 @@ export async function getDashboardStatsByDoctorSpecialty(doctorId: string) {
       },
       where: {
         medicalProfile: {
-          specialty: doctorProfile.specialty,
+          is: { specialty: doctorProfile.specialty },
         },
         bloodType: { not: null },
       },
@@ -985,7 +985,7 @@ export async function getDashboardStatsByDoctorSpecialty(doctorId: string) {
       where: {
         patient: {
           medicalProfile: {
-            specialty: doctorProfile.specialty,
+            is: { specialty: doctorProfile.specialty },
           },
         },
         occurredAt: {
